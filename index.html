@@ -1,0 +1,1758 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AR Scorecard Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  <style>
+    :root {
+      --bg: #f6f2ea;
+      --bg-2: #edf3f2;
+      --ink: #112222;
+      --muted: #5a6a6a;
+      --accent: #0b7a73;
+      --accent-2: #f2a541;
+      --accent-3: #d9715c;
+      --card: #ffffffcc;
+      --stroke: #d9dfdf;
+      --shadow: 0 20px 60px rgba(17, 34, 34, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at top right, #dff1ec 0%, transparent 55%),
+        radial-gradient(circle at 20% 20%, #fde8c6 0%, transparent 45%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 36px 28px 80px;
+    }
+
+    header.hero {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    .title-block {
+      flex: 1 1 360px;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-family: "Fraunces", serif;
+      font-size: clamp(28px, 4vw, 42px);
+      margin: 0 0 6px;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .filters {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      flex: 1 1 320px;
+    }
+
+    .dept-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0 8px;
+    }
+
+    .dept-tab {
+      border: 1px solid var(--stroke);
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--ink);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .dept-tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 10px 24px rgba(11, 122, 115, 0.25);
+    }
+
+    .filter {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      padding: 10px 14px;
+      box-shadow: var(--shadow);
+      min-width: 180px;
+    }
+
+    .filter label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      margin-bottom: 6px;
+    }
+
+    select {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(6px);
+    }
+
+    .kpi-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+    }
+
+    .kpi-value {
+      font-size: 26px;
+      font-weight: 700;
+      margin: 12px 0 6px;
+    }
+
+    .kpi-sub {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    .chart-card {
+      min-height: 260px;
+    }
+
+    .chart-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 220px;
+    }
+
+    .grid.graphs {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .grid.graphs.stacked {
+      grid-template-columns: 1fr;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--stroke);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .row-total td {
+      font-weight: 700;
+      background: rgba(11, 122, 115, 0.08);
+    }
+
+    .row-others td {
+      font-weight: 600;
+      background: rgba(217, 113, 92, 0.08);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #e7f3f1;
+      color: #0b7a73;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--stroke);
+      margin: 24px 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        padding: 26px 18px 60px;
+      }
+
+      .filters {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="title-block">
+        <div class="eyebrow">AR REPORT</div>
+        <h1>Broken To Better Urgent Care</h1>
+        <p class="subtitle">Scorecard Dashboard • <span id="reportMonth">Loading…</span></p>
+        <div class="badge-row">
+          <span class="pill" id="rowCount">Loading data…</span>
+          <span class="pill" id="deptBadge">All Departments</span>
+        </div>
+      </div>
+      <div class="filters">
+        <div class="filter">
+          <label for="monthSelect">Reporting Month</label>
+          <select id="monthSelect"></select>
+        </div>
+      </div>
+    </header>
+
+    <div id="deptTabs" class="dept-tabs"></div>
+
+    <section class="kpis">
+      <div class="card">
+        <div class="kpi-title">Days In Insurance AR</div>
+        <div class="kpi-value" id="kpiDaysAr">—</div>
+        <div class="kpi-sub" id="kpiDaysArSub">Based on aging snapshot, last 6 months AR share, last 2 months avg charges</div>
+      </div>
+      <div class="card">
+        <div class="kpi-title">Monthly Visits</div>
+        <div class="kpi-value" id="kpiVisits">—</div>
+        <div class="kpi-sub">Unique patient + service date</div>
+      </div>
+      <div class="card">
+        <div class="kpi-title">Monthly Collections</div>
+        <div class="kpi-value" id="kpiCollections">—</div>
+        <div class="kpi-sub">Payments posted in month</div>
+      </div>
+      <div class="card">
+        <div class="kpi-title">Collection %</div>
+        <div class="kpi-value" id="kpiCollectionRate">—</div>
+        <div class="kpi-sub">Payments / Charges</div>
+      </div>
+      <div class="card">
+        <div class="kpi-title">Expected Revenue</div>
+        <div class="kpi-value" id="kpiExpectedRevenue">—</div>
+        <div class="kpi-sub" id="kpiExpectedRevenueSub">Based on CPT fee schedule (insurance AR, last 6 months)</div>
+      </div>
+      <div class="card">
+        <div class="kpi-title">Outstanding AR (Total)</div>
+        <div class="kpi-value" id="kpiOutstandingAr">—</div>
+        <div class="kpi-sub">Aging snapshot total balance</div>
+      </div>
+    </section>
+
+    <section class="card chart-card">
+      <div class="chart-title">Current Month Daily Visits</div>
+      <div class="chart-wrap"><canvas id="dailyVisitsChart"></canvas></div>
+    </section>
+
+    <section class="grid graphs" id="trendGrid">
+      <div class="card chart-card">
+        <div class="chart-title">Visits</div>
+        <div class="chart-wrap"><canvas id="visitsChart"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-title">Charges</div>
+        <div class="chart-wrap"><canvas id="chargesChart"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-title">Payments</div>
+        <div class="chart-wrap"><canvas id="paymentsChart"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-title">New vs Established Visits</div>
+        <div class="chart-wrap"><canvas id="visitTypeTrendChart"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-title">Collections By Payment Type</div>
+        <div class="chart-wrap"><canvas id="payorChart"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-title">Patient vs Insurance Balance</div>
+        <div class="chart-wrap"><canvas id="balanceChart"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-title">Charges: Patient vs Insurance</div>
+        <div class="chart-wrap"><canvas id="chargeSplitChart"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-title">Payments: Patient vs Insurance</div>
+        <div class="chart-wrap"><canvas id="paymentSplitChart"></canvas></div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card chart-card">
+        <div class="chart-title">New vs Established Visits</div>
+        <div class="chart-wrap"><canvas id="patientTypeChart"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-title">Provider Visits (Top 8)</div>
+        <div class="chart-wrap"><canvas id="providerChart"></canvas></div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card chart-card">
+        <div class="chart-title">AR Aging Snapshot</div>
+        <div class="chart-wrap"><canvas id="agingChart"></canvas></div>
+        <div class="note">Aging data is organization-wide from the latest snapshot.</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <div class="chart-title">Top 10 Insurance AR Outstanding</div>
+        <div class="table-wrap">
+          <table id="insuranceTable"></table>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <section class="grid">
+      <div class="card">
+        <div class="chart-title">Top Procedures By Charges (CPT)</div>
+        <div class="chart-wrap"><canvas id="cptChargesChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="chart-title">Top Procedures By Payments (CPT)</div>
+        <div class="chart-wrap"><canvas id="cptPaymentsChart"></canvas></div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <div class="chart-title">Top Diagnoses (ICD-10)</div>
+        <div class="chart-wrap"><canvas id="diagnosisChart"></canvas></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="chart-title">AR By Month (Last 12 Months)</div>
+      <div class="table-wrap">
+        <table id="monthlyTable"></table>
+      </div>
+    </section>
+
+    <div class="status">
+      <span id="dataStatus">Loading files…</span>
+      <span>Powered by AGEING FILE.csv and charges payments adjsutments.csv</span>
+    </div>
+  </div>
+
+  <script>
+    const FILES = {
+      aging: 'AGEING FILE.csv',
+      ledger: 'charges payments adjsutments.csv',
+      feeScheduleCsv: 'fee schedule_clean.csv'
+    };
+
+    const bucketLabels = [
+      '<31',
+      '31-60',
+      '61-90',
+      '91-120',
+      '121-150',
+      '151-180',
+      '>180'
+    ];
+
+    const bucketKeys = [
+      'srvbucket: <31',
+      'srvbucket: 31 - 60',
+      'srvbucket: 61 - 90',
+      'srvbucket: 91 - 120',
+      'srvbucket: 121 - 150',
+      'srvbucket: 151 - 180',
+      'srvbucket: >180'
+    ];
+
+    const state = {
+      ledger: [],
+      aging: [],
+      feeSchedule: new Map(),
+      feeStats: { total: 0, matched: 0, missing: 0 },
+      feeScheduleStatus: '',
+      departments: [],
+      months: [],
+      charts: {},
+      currentDept: 'All'
+    };
+
+    const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+    const number = new Intl.NumberFormat('en-US');
+
+    const parseDate = (value) => {
+      if (!value) return null;
+      const cleaned = String(value).trim();
+      if (!cleaned) return null;
+      const parts = cleaned.split('/');
+      if (parts.length < 3) return null;
+      const [m, d, y] = parts.map(part => parseInt(part, 10));
+      const year = y < 100 ? 2000 + y : y;
+      return new Date(year, m - 1, d);
+    };
+
+    const REPORT_YEAR_START = 2026;
+
+    const isReportingDate = (date) => date && date.getFullYear() >= REPORT_YEAR_START;
+
+    const getTransactionDate = (row, type) => {
+      if (type === 'CHARGE') return parseDate(row['chrpostdate']) || parseDate(row['srvday']);
+      if (type === 'PAYMENT' || type === 'ADJUSTMENT') return parseDate(row['postdate']) || parseDate(row['srvday']);
+      return parseDate(row['srvday']);
+    };
+
+    const toNumber = (value) => {
+      if (value === null || value === undefined) return 0;
+      const cleaned = String(value).replace(/[$,]/g, '').trim();
+      if (!cleaned || cleaned === '-' || cleaned === '—') return 0;
+      const num = Number(cleaned);
+      return Number.isFinite(num) ? num : 0;
+    };
+
+    const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const formatMonth = (key) => {
+      const [y, m] = key.split('-').map(Number);
+      return new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    };
+
+    const formatShortCurrency = (value) => {
+      const abs = Math.abs(value);
+      if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+      if (abs >= 1_000) return `$${(value / 1_000).toFixed(0)}k`;
+      return currency.format(value);
+    };
+
+    const daysInMonth = (key) => {
+      if (!key) return 0;
+      const [y, m] = key.split('-').map(Number);
+      if (!y || !m) return 0;
+      return new Date(y, m, 0).getDate();
+    };
+
+    const monthKeyFromDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+    const getRecentMonths = (availableMonths, endKey, count) => {
+      if (!endKey) return [];
+      const filtered = availableMonths
+        .filter(key => key <= endKey)
+        .sort();
+      return filtered.slice(-count);
+    };
+
+    const categorizeVisit = (proccode = '') => {
+      const codes = String(proccode).split(',').map(code => code.trim());
+      const newCodes = new Set(['99201', '99202', '99203', '99204', '99205']);
+      const estCodes = new Set(['99211', '99212', '99213', '99214', '99215']);
+      for (const code of codes) {
+        if (newCodes.has(code)) return 'New';
+        if (estCodes.has(code)) return 'Established';
+      }
+      return 'Other';
+    };
+
+    const normalizeCpt = (proccode = '') => {
+      const first = String(proccode).split(',')[0];
+      return first ? first.trim() : '';
+    };
+
+    const payerGroupFromTransfer = (transferType = '') => {
+      const value = String(transferType).trim().toLowerCase();
+      return value.includes('patient') ? 'Self Pay' : 'Insurance';
+    };
+
+    const payerGroupFromInsuranceName = (name = '') => {
+      const value = String(name).toUpperCase();
+      return value.includes('SELF PAY') ? 'Self Pay' : 'Insurance';
+    };
+
+    const isInsuranceRow = (row = {}) => payerGroupFromInsuranceName(row['ins pkg name']) === 'Insurance';
+
+    const AGING_DEPT_FIELD = 'curr dprtmnt';
+
+    const matchesAgingDept = (row, deptFilter) => {
+      if (deptFilter === 'All') return true;
+      if (!(AGING_DEPT_FIELD in row)) return true;
+      const dept = String(row[AGING_DEPT_FIELD] || '').trim();
+      return dept === deptFilter;
+    };
+
+    const loadCSV = (file, options = {}) => new Promise((resolve, reject) => {
+      Papa.parse(file, {
+        download: true,
+        skipEmptyLines: true,
+        header: true,
+        ...options,
+        complete: (results) => resolve(results.data),
+        error: (err) => reject(err)
+      });
+    });
+
+    const loadFeeSchedule = async () => {
+      try {
+        const response = await fetch(encodeURI(FILES.feeScheduleCsv));
+        if (!response.ok) {
+          return { map: new Map(), status: 'Fee schedule CSV not found' };
+        }
+        const text = await response.text();
+        const rows = await new Promise((resolve, reject) => {
+          Papa.parse(text, {
+            skipEmptyLines: true,
+            complete: (results) => resolve(results.data),
+            error: (err) => reject(err)
+          });
+        });
+        const map = new Map();
+        rows.slice(1).forEach(row => {
+          const code = String(row[1] || '').trim();
+          if (!code) return;
+          const modifier = String(row[2] || '').trim();
+          const feeValue = toNumber(row[4]);
+          if (!feeValue) return;
+          if (!map.has(code) || !modifier) {
+            map.set(code, { fee: feeValue, modifier });
+          }
+        });
+        if (map.size) return { map, status: `Loaded ${map.size} fee codes from ${FILES.feeScheduleCsv}` };
+        return { map: new Map(), status: 'Fee schedule CSV parsed but empty' };
+      } catch (err) {
+        return { map: new Map(), status: 'Fee schedule CSV unreadable' };
+      }
+    };
+
+    const computeFeeExpected = (feeMap, recentMonths, deptFilter) => {
+      if (!feeMap || feeMap.size === 0) return { total: 0, matched: 0, missing: 0 };
+      const monthSet = new Set(recentMonths);
+      let total = 0;
+      let matched = 0;
+      let missing = 0;
+      state.aging.forEach(row => {
+        if (!matchesAgingDept(row, deptFilter)) return;
+        if (!isInsuranceRow(row)) return;
+        const srvDate = parseDate(row['srvday']);
+        if (!srvDate || !isReportingDate(srvDate)) return;
+        const key = monthKey(srvDate);
+        if (!monthSet.has(key)) return;
+        const cpt = normalizeCpt(row['proccode']);
+        if (!cpt) return;
+        const feeEntry = feeMap.get(cpt);
+        if (feeEntry) {
+          total += feeEntry.fee;
+          matched += 1;
+        } else {
+          missing += 1;
+        }
+      });
+      return { total, matched, missing };
+    };
+
+    const init = async () => {
+      try {
+        const [ledger, aging, feeScheduleResult] = await Promise.all([
+          loadCSV(encodeURI(FILES.ledger)),
+          loadCSV(encodeURI(FILES.aging), {
+            beforeFirstChunk: (chunk) => {
+              const lines = chunk.split(/\r?\n/);
+              const firstLine = (lines[0] || '').toLowerCase();
+              if (firstLine.includes('claimid') || firstLine.includes('srvday')) {
+                return chunk;
+              }
+              return lines.slice(1).join('\n');
+            }
+          }),
+          loadFeeSchedule()
+        ]);
+
+        state.ledger = ledger;
+        state.aging = aging;
+        state.feeSchedule = feeScheduleResult.map || new Map();
+        state.feeScheduleStatus = feeScheduleResult.status || '';
+
+        const departments = new Set();
+        const months = new Set();
+
+        ledger.forEach(row => {
+          const dept = row['curr dprtmnt']?.trim() || 'Unknown';
+          departments.add(dept);
+
+          const type = row['type']?.trim().toUpperCase();
+          const dateKey = getTransactionDate(row, type);
+          if (dateKey && isReportingDate(dateKey)) months.add(monthKey(dateKey));
+          if (type === 'CHARGE') {
+            const visitDate = parseDate(row['srvday']);
+            if (visitDate && isReportingDate(visitDate)) months.add(monthKey(visitDate));
+          }
+        });
+
+        state.departments = ['All', ...Array.from(departments).sort()];
+        state.months = Array.from(months).sort().filter(key => parseInt(key.split('-')[0], 10) >= REPORT_YEAR_START);
+
+        populateSelect('monthSelect', state.months.map(key => ({ value: key, label: formatMonth(key) })));
+
+        document.getElementById('monthSelect').value = state.months[state.months.length - 1] || '';
+        state.currentDept = 'All';
+        renderDeptTabs();
+        document.getElementById('monthSelect').addEventListener('change', render);
+
+        initCharts();
+        render();
+      } catch (err) {
+        document.getElementById('dataStatus').textContent = `Failed to load data: ${err}`;
+      }
+    };
+
+    const populateSelect = (id, options) => {
+      const select = document.getElementById(id);
+      select.innerHTML = '';
+      options.forEach(option => {
+        const opt = document.createElement('option');
+        if (typeof option === 'string') {
+          opt.value = option;
+          opt.textContent = option;
+        } else {
+          opt.value = option.value;
+          opt.textContent = option.label;
+        }
+        select.appendChild(opt);
+      });
+    };
+
+    const renderDeptTabs = () => {
+      const container = document.getElementById('deptTabs');
+      container.innerHTML = '';
+      state.departments.forEach(dept => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `dept-tab${dept === state.currentDept ? ' active' : ''}`;
+        btn.textContent = dept;
+        btn.addEventListener('click', () => {
+          state.currentDept = dept;
+          renderDeptTabs();
+          render();
+        });
+        container.appendChild(btn);
+      });
+    };
+
+    const computeAggregates = (deptFilter) => {
+      const monthly = new Map();
+      const providerVisits = new Map();
+
+      const ensureMonth = (key) => {
+        if (!monthly.has(key)) {
+          monthly.set(key, {
+            charges: 0,
+            chargesInsurance: 0,
+            payments: 0,
+            adjustments: 0,
+            visitKeys: new Set(),
+            newKeys: new Set(),
+            estKeys: new Set()
+          });
+        }
+        return monthly.get(key);
+      };
+
+      state.ledger.forEach(row => {
+        const dept = row['curr dprtmnt']?.trim() || 'Unknown';
+        if (deptFilter !== 'All' && dept !== deptFilter) return;
+        const type = row['type']?.trim().toUpperCase();
+
+        if (type === 'CHARGE') {
+          const visitDate = parseDate(row['srvday']);
+          if (visitDate && isReportingDate(visitDate)) {
+            const visitKey = `${row['patientid'] || ''}|${row['srvday'] || ''}`;
+            const visitMonth = monthKey(visitDate);
+            const visitAgg = ensureMonth(visitMonth);
+            if (!visitAgg.visitKeys.has(visitKey)) {
+              visitAgg.visitKeys.add(visitKey);
+              const category = categorizeVisit(row['proccode']);
+              if (category === 'New') visitAgg.newKeys.add(visitKey);
+              if (category === 'Established') visitAgg.estKeys.add(visitKey);
+
+              const provider = row['rndrng prvdr']?.trim() || 'Unknown';
+              if (!providerVisits.has(provider)) providerVisits.set(provider, new Set());
+              providerVisits.get(provider).add(visitKey);
+            }
+          }
+
+          const chargeDate = parseDate(row['chrpostdate']) || visitDate;
+          if (chargeDate && isReportingDate(chargeDate)) {
+            const chargeMonth = monthKey(chargeDate);
+            const chargeAgg = ensureMonth(chargeMonth);
+            const chargeAmount = toNumber(row['all chgs']);
+            chargeAgg.charges += chargeAmount;
+            if (payerGroupFromTransfer(row['trnsfr type']) === 'Insurance') {
+              chargeAgg.chargesInsurance += chargeAmount;
+            }
+          }
+        } else if (type === 'PAYMENT') {
+          const paymentDate = parseDate(row['postdate']) || parseDate(row['srvday']);
+          if (!paymentDate || !isReportingDate(paymentDate)) return;
+          const payMonth = monthKey(paymentDate);
+          const payAgg = ensureMonth(payMonth);
+          payAgg.payments += toNumber(row['net pmt']);
+        } else if (type === 'ADJUSTMENT') {
+          const adjDate = parseDate(row['postdate']) || parseDate(row['srvday']);
+          if (!adjDate || !isReportingDate(adjDate)) return;
+          const adjMonth = monthKey(adjDate);
+          const adjAgg = ensureMonth(adjMonth);
+          adjAgg.adjustments += toNumber(row['adjall']);
+        }
+      });
+
+      return { monthly, providerVisits };
+    };
+
+    const computePaymentTypes = (deptFilter, month) => {
+      const totals = new Map();
+      state.ledger.forEach(row => {
+        const dept = row['curr dprtmnt']?.trim() || 'Unknown';
+        if (deptFilter !== 'All' && dept !== deptFilter) return;
+        const date = parseDate(row['postdate']) || parseDate(row['srvday']);
+        if (!date || !isReportingDate(date)) return;
+        if (monthKey(date) !== month) return;
+        if (row['type']?.trim().toUpperCase() !== 'PAYMENT') return;
+        const amount = Math.abs(toNumber(row['net pmt']));
+        const label = row['patient primary ins pkg type']?.trim() || row['pmtplntyp']?.trim() || 'Other';
+        totals.set(label, (totals.get(label) || 0) + amount);
+      });
+      return totals;
+    };
+
+    const computeChargePaymentSplit = (deptFilter) => {
+      let chargeInsurance = 0;
+      let chargePatient = 0;
+      let paymentInsurance = 0;
+      let paymentPatient = 0;
+
+      state.ledger.forEach(row => {
+        const dept = row['curr dprtmnt']?.trim() || 'Unknown';
+        if (deptFilter !== 'All' && dept !== deptFilter) return;
+        const type = row['type']?.trim().toUpperCase();
+        const txDate = getTransactionDate(row, type);
+        if (!txDate || !isReportingDate(txDate)) return;
+        const group = payerGroupFromTransfer(row['trnsfr type']);
+
+        if (type === 'CHARGE') {
+          const amount = Math.abs(toNumber(row['all chgs']));
+          if (group === 'Insurance') chargeInsurance += amount;
+          else chargePatient += amount;
+        } else if (type === 'PAYMENT') {
+          const amount = Math.abs(toNumber(row['net pmt']));
+          if (group === 'Insurance') paymentInsurance += amount;
+          else paymentPatient += amount;
+        }
+      });
+
+      return { chargeInsurance, chargePatient, paymentInsurance, paymentPatient };
+    };
+
+    const computeDailyVisits = (deptFilter, monthKeyValue) => {
+      const visitsByDay = new Map();
+      state.ledger.forEach(row => {
+        const dept = row['curr dprtmnt']?.trim() || 'Unknown';
+        if (deptFilter !== 'All' && dept !== deptFilter) return;
+        if (row['type']?.trim().toUpperCase() !== 'CHARGE') return;
+        const visitDate = parseDate(row['srvday']);
+        if (!visitDate || !isReportingDate(visitDate)) return;
+        if (monthKey(visitDate) !== monthKeyValue) return;
+        const dayKey = `${visitDate.getFullYear()}-${String(visitDate.getMonth() + 1).padStart(2, '0')}-${String(visitDate.getDate()).padStart(2, '0')}`;
+        const visitKey = `${row['patientid'] || ''}|${row['srvday'] || ''}`;
+        if (!visitsByDay.has(dayKey)) visitsByDay.set(dayKey, new Set());
+        visitsByDay.get(dayKey).add(visitKey);
+      });
+      return visitsByDay;
+    };
+
+    const computeCptSummaries = (deptFilter, recentMonths) => {
+      const monthSet = new Set(recentMonths);
+      const charges = new Map();
+      const payments = new Map();
+      const diagnoses = new Map();
+
+      state.ledger.forEach(row => {
+        const dept = row['curr dprtmnt']?.trim() || 'Unknown';
+        if (deptFilter !== 'All' && dept !== deptFilter) return;
+        const type = row['type']?.trim().toUpperCase();
+        const txDate = getTransactionDate(row, type);
+        if (!txDate || !isReportingDate(txDate)) return;
+        const key = monthKey(txDate);
+        if (!monthSet.has(key)) return;
+
+        if (type === 'CHARGE') {
+          const cpt = normalizeCpt(row['proccode']);
+          if (cpt) charges.set(cpt, (charges.get(cpt) || 0) + Math.abs(toNumber(row['all chgs'])));
+
+          const visitDate = parseDate(row['srvday']);
+          if (visitDate && isReportingDate(visitDate)) {
+            const diag = String(row['icd10claimdiagcode01'] || '').trim();
+            if (diag) diagnoses.set(diag, (diagnoses.get(diag) || 0) + 1);
+          }
+        } else if (type === 'PAYMENT') {
+          const cpt = normalizeCpt(row['proccode']);
+          if (cpt) payments.set(cpt, (payments.get(cpt) || 0) + Math.abs(toNumber(row['net pmt'])));
+        }
+      });
+
+      return { charges, payments, diagnoses };
+    };
+
+    const computeAgingTotals = (deptFilter) => {
+      const bucketTotals = new Array(bucketKeys.length).fill(0);
+      const bucketTotalsInsurance = new Array(bucketKeys.length).fill(0);
+      const insuranceTotals = new Map();
+      let insuranceBalance = 0;
+      let patientBalance = 0;
+
+      state.aging.forEach(row => {
+        if (!matchesAgingDept(row, deptFilter)) return;
+        const insurance = row['ins pkg name']?.trim() || 'Unknown';
+        const bucketValues = bucketKeys.map(key => Math.abs(toNumber(row[key])));
+        const total = Math.abs(toNumber(row['srvbucket: Total']));
+
+        bucketValues.forEach((value, i) => bucketTotals[i] += value);
+        if (isInsuranceRow(row)) {
+          bucketValues.forEach((value, i) => bucketTotalsInsurance[i] += value);
+          insuranceBalance += total;
+        } else {
+          patientBalance += total;
+        }
+
+        if (!insuranceTotals.has(insurance)) {
+          insuranceTotals.set(insurance, { total: 0, buckets: new Array(bucketKeys.length).fill(0) });
+        }
+        const entry = insuranceTotals.get(insurance);
+        entry.total += total;
+        bucketValues.forEach((value, i) => entry.buckets[i] += value);
+      });
+
+      return { bucketTotals, bucketTotalsInsurance, insuranceTotals, insuranceBalance, patientBalance };
+    };
+
+    const computeCptRates = (deptFilter) => {
+      const chargeSums = { Insurance: new Map(), 'Self Pay': new Map() };
+      const paymentSums = { Insurance: new Map(), 'Self Pay': new Map() };
+      let totalCharges = { Insurance: 0, 'Self Pay': 0 };
+      let totalPayments = { Insurance: 0, 'Self Pay': 0 };
+
+      state.ledger.forEach(row => {
+        const dept = row['curr dprtmnt']?.trim() || 'Unknown';
+        if (deptFilter !== 'All' && dept !== deptFilter) return;
+        const cpt = normalizeCpt(row['proccode']);
+        if (!cpt) return;
+        const group = payerGroupFromTransfer(row['trnsfr type']);
+        const type = row['type']?.trim().toUpperCase();
+        const txDate = getTransactionDate(row, type);
+        if (!txDate || !isReportingDate(txDate)) return;
+        if (type === 'CHARGE') {
+          const amount = Math.abs(toNumber(row['all chgs']));
+          if (!chargeSums[group].has(cpt)) chargeSums[group].set(cpt, 0);
+          chargeSums[group].set(cpt, chargeSums[group].get(cpt) + amount);
+          totalCharges[group] += amount;
+        } else if (type === 'PAYMENT') {
+          const amount = Math.abs(toNumber(row['net pmt']));
+          if (!paymentSums[group].has(cpt)) paymentSums[group].set(cpt, 0);
+          paymentSums[group].set(cpt, paymentSums[group].get(cpt) + amount);
+          totalPayments[group] += amount;
+        }
+      });
+
+      const overallRate = {
+        Insurance: totalCharges.Insurance ? (totalPayments.Insurance / totalCharges.Insurance) : 0,
+        'Self Pay': totalCharges['Self Pay'] ? (totalPayments['Self Pay'] / totalCharges['Self Pay']) : 0
+      };
+      const combinedRate = (totalCharges.Insurance + totalCharges['Self Pay']) > 0
+        ? (totalPayments.Insurance + totalPayments['Self Pay']) / (totalCharges.Insurance + totalCharges['Self Pay'])
+        : 0;
+
+      return { chargeSums, paymentSums, overallRate, combinedRate };
+    };
+
+    const computeExpectedRevenue = (deptFilter) => {
+      const deptRates = computeCptRates(deptFilter);
+      const fallbackRates = deptFilter === 'All' ? deptRates : computeCptRates('All');
+
+      let expected = 0;
+      state.aging.forEach(row => {
+        const cpt = normalizeCpt(row['proccode']);
+        const outstanding = Math.abs(toNumber(row['srvbucket: Total']));
+        if (!cpt || !outstanding) return;
+        const group = payerGroupFromInsuranceName(row['ins pkg name']);
+        const chargesForCpt = deptRates.chargeSums[group].get(cpt) || 0;
+        const paymentsForCpt = deptRates.paymentSums[group].get(cpt) || 0;
+        let rate = chargesForCpt > 0 ? (paymentsForCpt / chargesForCpt) : 0;
+        if (!rate) {
+          rate = deptRates.overallRate[group] || deptRates.combinedRate;
+        }
+        if (!rate) {
+          const fallbackCharges = fallbackRates.chargeSums[group].get(cpt) || 0;
+          const fallbackPayments = fallbackRates.paymentSums[group].get(cpt) || 0;
+          rate = fallbackCharges > 0 ? (fallbackPayments / fallbackCharges) : 0;
+        }
+        if (!rate) {
+          rate = fallbackRates.overallRate[group] || fallbackRates.combinedRate;
+        }
+        expected += outstanding * (rate || 0);
+      });
+
+      return expected;
+    };
+
+    const render = () => {
+      const dept = state.currentDept;
+      const month = document.getElementById('monthSelect').value;
+      const { monthly, providerVisits } = computeAggregates(dept);
+      const monthlyAll = dept === 'All' ? monthly : computeAggregates('All').monthly;
+      const paymentTypes = computePaymentTypes(dept, month);
+      const splits = computeChargePaymentSplit(dept);
+      const { bucketTotals, bucketTotalsInsurance, insuranceTotals, insuranceBalance, patientBalance } = computeAgingTotals(dept);
+
+      const monthAgg = monthly.get(month) || {
+        charges: 0,
+        chargesInsurance: 0,
+        payments: 0,
+        adjustments: 0,
+        visitKeys: new Set(),
+        newKeys: new Set(),
+        estKeys: new Set()
+      };
+
+      const monthLabel = month ? formatMonth(month) : '—';
+      document.getElementById('reportMonth').textContent = monthLabel;
+      document.getElementById('deptBadge').textContent = dept === 'All' ? 'All Departments' : dept;
+
+      const visits = monthAgg.visitKeys.size;
+      const collections = monthAgg.payments;
+      const charges = monthAgg.charges;
+      const adjustments = monthAgg.adjustments;
+      const netCharges = Math.abs(charges) - Math.abs(adjustments);
+      const collectionRate = netCharges > 0 ? (Math.abs(collections) / netCharges) : 0;
+      const expectedRevenue = computeExpectedRevenue(dept);
+
+      const totalArInsurance = bucketTotalsInsurance.reduce((sum, val) => sum + val, 0);
+      const totalArAll = bucketTotals.reduce((sum, val) => sum + val, 0);
+      const availableMonthsAll = Array.from(monthlyAll.keys()).sort();
+      const lastSixMonths = getRecentMonths(availableMonthsAll, month, 6);
+      const lastTwoMonths = getRecentMonths(availableMonthsAll, month, 2);
+      const lastTwelveMonths = getRecentMonths(availableMonthsAll, month, 12);
+      const feeStats = computeFeeExpected(state.feeSchedule, lastSixMonths, dept);
+      const summaries = computeCptSummaries(dept, lastTwelveMonths);
+      const dailyVisits = computeDailyVisits(dept, month);
+
+      const daysInShareWindow = lastSixMonths.reduce((sum, key) => sum + daysInMonth(key), 0);
+      const chargesShareWindow = lastSixMonths.reduce((sum, key) => sum + (monthly.get(key)?.chargesInsurance || 0), 0);
+      const chargesShareWindowAll = lastSixMonths.reduce((sum, key) => sum + (monthlyAll.get(key)?.chargesInsurance || 0), 0);
+      const deptShare = chargesShareWindowAll ? (chargesShareWindow / chargesShareWindowAll) : 0;
+      const deptArInsurance = totalArInsurance * (deptShare || 0);
+
+      const daysInAvgWindow = lastTwoMonths.reduce((sum, key) => sum + daysInMonth(key), 0);
+      const chargesAvgWindow = lastTwoMonths.reduce((sum, key) => sum + (monthly.get(key)?.chargesInsurance || 0), 0);
+      const avgChargesPerDay = daysInAvgWindow ? (chargesAvgWindow / daysInAvgWindow) : 0;
+      const daysInAr = avgChargesPerDay ? (deptArInsurance / avgChargesPerDay) : 0;
+
+      document.getElementById('kpiDaysAr').textContent = daysInAr ? `${daysInAr.toFixed(1)} days` : '—';
+      document.getElementById('kpiVisits').textContent = visits ? number.format(visits) : '—';
+      document.getElementById('kpiCollections').textContent = collections ? currency.format(Math.abs(collections)) : '—';
+      document.getElementById('kpiCollectionRate').textContent = charges ? `${(collectionRate * 100).toFixed(2)}%` : '—';
+      document.getElementById('kpiExpectedRevenue').textContent = feeStats.total ? currency.format(feeStats.total) : '—';
+      document.getElementById('kpiExpectedRevenueSub').textContent = state.feeSchedule.size === 0
+        ? (state.feeScheduleStatus || 'Fee schedule file not loaded')
+        : (feeStats.matched
+          ? `Matched ${number.format(feeStats.matched)} CPTs • Missing ${number.format(feeStats.missing)}`
+          : 'No CPTs matched in last 6 months');
+      document.getElementById('kpiOutstandingAr').textContent = totalArAll ? currency.format(totalArAll) : '—';
+
+      updateVisitChargePaymentCharts(monthly);
+      updatePaymentChart(paymentTypes);
+      updatePatientTypeChart(monthAgg);
+      updateProviderChart(providerVisits);
+      updateAgingChart(bucketTotalsInsurance);
+      updateBalanceChart(insuranceBalance, patientBalance);
+      updateSplitCharts(splits);
+      updateCptCharts(summaries);
+      updateDailyVisitsChart(dailyVisits);
+      updateInsuranceTable(insuranceTotals);
+      updateMonthlyTable(monthly);
+
+      document.getElementById('rowCount').textContent = `${number.format(state.ledger.length)} ledger rows • ${number.format(state.aging.length)} aging rows`;
+      document.getElementById('dataStatus').textContent = `Loaded ${state.ledger.length} ledger rows and ${state.aging.length} aging rows`;
+    };
+
+    const initCharts = () => {
+      Chart.defaults.font.family = 'Space Grotesk';
+      Chart.defaults.color = '#3b4a4a';
+      if (window.ChartDataLabels) {
+        Chart.register(ChartDataLabels);
+      }
+      Chart.defaults.plugins.datalabels = {
+        color: '#3b4a4a',
+        font: { weight: '600', size: 10 }
+      };
+
+      state.charts.visits = new Chart(document.getElementById('visitsChart'), {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Visits',
+            data: [],
+            backgroundColor: 'rgba(11, 122, 115, 0.45)',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            datalabels: {
+              anchor: 'end',
+              align: 'top',
+              formatter: (value) => number.format(value)
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(0,0,0,0.05)' }
+            }
+          }
+        }
+      });
+
+      state.charts.charges = new Chart(document.getElementById('chargesChart'), {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Charges',
+            data: [],
+            borderColor: '#0b7a73',
+            backgroundColor: '#0b7a73',
+            tension: 0.35
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            datalabels: {
+              anchor: 'end',
+              align: 'top',
+              formatter: (value) => formatShortCurrency(value),
+              color: '#ffffff',
+              backgroundColor: '#0b7a73',
+              borderRadius: 4,
+              padding: 4
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: (value) => `$${(value / 1000).toFixed(0)}k` }
+            }
+          }
+        }
+      });
+
+      state.charts.payments = new Chart(document.getElementById('paymentsChart'), {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Payments',
+            data: [],
+            borderColor: '#f2a541',
+            backgroundColor: '#f2a541',
+            tension: 0.35
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            datalabels: {
+              anchor: 'end',
+              align: 'top',
+              formatter: (value) => formatShortCurrency(value)
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: (value) => `$${(value / 1000).toFixed(0)}k` }
+            }
+          }
+        }
+      });
+
+      state.charts.visitTypeTrend = new Chart(document.getElementById('visitTypeTrendChart'), {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'New',
+              data: [],
+              backgroundColor: '#0b7a73',
+              borderRadius: 6
+            },
+            {
+              label: 'Established',
+              data: [],
+              backgroundColor: '#f2a541',
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            datalabels: {
+              color: '#ffffff',
+              anchor: 'center',
+              align: 'center',
+              formatter: (value) => (value ? number.format(value) : '')
+            }
+          },
+          scales: {
+            x: { stacked: true },
+            y: { stacked: true, beginAtZero: true }
+          }
+        }
+      });
+
+      state.charts.payor = new Chart(document.getElementById('payorChart'), {
+        type: 'doughnut',
+        data: {
+          labels: [],
+          datasets: [{
+            data: [],
+            backgroundColor: ['#0b7a73', '#f2a541', '#d9715c', '#5a8a8a', '#b7c9c9', '#f6c9a6']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: {
+              color: '#112222',
+              formatter: (value, ctx) => {
+                const data = ctx.chart.data.datasets[0].data || [];
+                const total = data.reduce((sum, v) => sum + v, 0);
+                if (!total || value <= 0) return '';
+                const pct = (value / total) * 100;
+                return pct >= 5 ? `${pct.toFixed(1)}%` : '';
+              }
+            }
+          }
+        }
+      });
+
+      state.charts.balance = new Chart(document.getElementById('balanceChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Insurance', 'Patient'],
+          datasets: [{
+            data: [],
+            backgroundColor: ['#0b7a73', '#d9715c']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: {
+              color: '#112222',
+              formatter: (value, ctx) => {
+                const data = ctx.chart.data.datasets[0].data || [];
+                const total = data.reduce((sum, v) => sum + v, 0);
+                if (!total || value <= 0) return '';
+                const pct = (value / total) * 100;
+                return `${pct.toFixed(1)}%`;
+              }
+            }
+          }
+        }
+      });
+
+      const splitChartOptions = {
+        type: 'doughnut',
+        data: {
+          labels: ['Insurance', 'Patient'],
+          datasets: [{
+            data: [],
+            backgroundColor: ['#0b7a73', '#d9715c']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: {
+              color: '#112222',
+              formatter: (value, ctx) => {
+                const data = ctx.chart.data.datasets[0].data || [];
+                const total = data.reduce((sum, v) => sum + v, 0);
+                if (!total || value <= 0) return '';
+                const pct = (value / total) * 100;
+                return `${pct.toFixed(1)}%`;
+              }
+            }
+          }
+        }
+      };
+
+      state.charts.chargeSplit = new Chart(document.getElementById('chargeSplitChart'), splitChartOptions);
+      state.charts.paymentSplit = new Chart(document.getElementById('paymentSplitChart'), splitChartOptions);
+
+      state.charts.patientType = new Chart(document.getElementById('patientTypeChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['New', 'Established', 'Other'],
+          datasets: [{
+            data: [0, 0, 0],
+            backgroundColor: ['#0b7a73', '#f2a541', '#b7c9c9']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+
+      state.charts.dailyVisits = new Chart(document.getElementById('dailyVisitsChart'), {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Visits',
+            data: [],
+            backgroundColor: '#0b7a73',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              color: '#ffffff',
+              anchor: 'end',
+              align: 'top',
+              formatter: (value) => number.format(value),
+              backgroundColor: '#0b1720',
+              borderRadius: 4,
+              padding: 4
+            }
+          },
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+
+      const topChartOptions = (color) => ({
+        type: 'bar',
+        data: { labels: [], datasets: [{ label: 'Value', data: [], backgroundColor: color, borderRadius: 6 }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              color: '#ffffff',
+              anchor: 'center',
+              align: 'center',
+              formatter: (value) => formatShortCurrency(value)
+            }
+          },
+          scales: { x: { beginAtZero: true } }
+        }
+      });
+
+      state.charts.cptCharges = new Chart(document.getElementById('cptChargesChart'), topChartOptions('#0b7a73'));
+      state.charts.cptPayments = new Chart(document.getElementById('cptPaymentsChart'), topChartOptions('#f2a541'));
+
+      state.charts.diagnosis = new Chart(document.getElementById('diagnosisChart'), {
+        type: 'bar',
+        data: { labels: [], datasets: [{ label: 'Visits', data: [], backgroundColor: '#5a8a8a', borderRadius: 6 }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              color: '#ffffff',
+              anchor: 'center',
+              align: 'center',
+              formatter: (value) => number.format(value)
+            }
+          },
+          scales: { x: { beginAtZero: true } }
+        }
+      });
+
+      state.charts.provider = new Chart(document.getElementById('providerChart'), {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Visits',
+            data: [],
+            backgroundColor: '#0b7a73',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            datalabels: {
+              color: '#ffffff',
+              anchor: 'center',
+              align: 'center',
+              formatter: (value) => number.format(value)
+            }
+          },
+          scales: {
+            x: { beginAtZero: true }
+          }
+        }
+      });
+
+      state.charts.aging = new Chart(document.getElementById('agingChart'), {
+        type: 'bar',
+        data: {
+          labels: bucketLabels,
+          datasets: [{
+            label: 'Outstanding AR',
+            data: [],
+            backgroundColor: [
+              '#0b7a73',
+              '#1a6d7a',
+              '#2b5d7f',
+              '#3b4c7c',
+              '#4b3a70',
+              '#6b355d',
+              '#8b2f4a'
+            ],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            datalabels: {
+              color: '#ffffff',
+              anchor: 'center',
+              align: 'center',
+              formatter: (value) => formatShortCurrency(value),
+              textStrokeColor: '#0b1720',
+              textStrokeWidth: 2
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.label}: ${formatShortCurrency(ctx.parsed.y || 0)}`
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (value) => `$${(value / 1000).toFixed(0)}k`
+              }
+            }
+          }
+        }
+      });
+    };
+
+    const updateVisitChargePaymentCharts = (monthly) => {
+      const keys = Array.from(monthly.keys()).sort();
+      const visitKeys = keys.filter(key => monthly.get(key).visitKeys.size > 0);
+      const chargeKeys = keys.filter(key => Math.abs(monthly.get(key).charges) > 0);
+      const paymentKeys = keys.filter(key => Math.abs(monthly.get(key).payments) > 0);
+
+      const lastVisitKeys = visitKeys.slice(-12);
+      const lastChargeKeys = chargeKeys.slice(-12);
+      const lastPaymentKeys = paymentKeys.slice(-12);
+
+      const visitLabels = lastVisitKeys.map(formatMonth);
+      const chargeLabels = lastChargeKeys.map(formatMonth);
+      const paymentLabels = lastPaymentKeys.map(formatMonth);
+
+      const visits = lastVisitKeys.map(key => monthly.get(key).visitKeys.size);
+      const newVisits = lastVisitKeys.map(key => monthly.get(key).newKeys.size);
+      const estVisits = lastVisitKeys.map(key => monthly.get(key).estKeys.size);
+      const charges = lastChargeKeys.map(key => Math.abs(monthly.get(key).charges));
+      const payments = lastPaymentKeys.map(key => Math.abs(monthly.get(key).payments));
+
+      state.charts.visits.data.labels = visitLabels;
+      state.charts.visits.data.datasets[0].data = visits;
+      state.charts.visits.update();
+
+      state.charts.charges.data.labels = chargeLabels;
+      state.charts.charges.data.datasets[0].data = charges;
+      state.charts.charges.update();
+
+      state.charts.payments.data.labels = paymentLabels;
+      state.charts.payments.data.datasets[0].data = payments;
+      state.charts.payments.update();
+
+      state.charts.visitTypeTrend.data.labels = visitLabels;
+      state.charts.visitTypeTrend.data.datasets[0].data = newVisits;
+      state.charts.visitTypeTrend.data.datasets[1].data = estVisits;
+      state.charts.visitTypeTrend.update();
+
+      const grid = document.getElementById('trendGrid');
+      if (grid) {
+        const maxLen = Math.max(visitLabels.length, chargeLabels.length, paymentLabels.length);
+        grid.classList.toggle('stacked', maxLen > 8);
+      }
+    };
+
+    const updatePaymentChart = (paymentTypes) => {
+      const entries = Array.from(paymentTypes.entries()).sort((a, b) => b[1] - a[1]);
+      const top = entries.slice(0, 5);
+      const otherTotal = entries.slice(5).reduce((sum, [, value]) => sum + value, 0);
+      if (otherTotal > 0) top.push(['Other', otherTotal]);
+
+      const chart = state.charts.payor;
+      chart.data.labels = top.map(([label]) => label);
+      chart.data.datasets[0].data = top.map(([, value]) => value);
+      chart.update();
+    };
+
+    const updatePatientTypeChart = (monthAgg) => {
+      const chart = state.charts.patientType;
+      const newCount = monthAgg.newKeys.size;
+      const estCount = monthAgg.estKeys.size;
+      const otherCount = Math.max(monthAgg.visitKeys.size - newCount - estCount, 0);
+      chart.data.datasets[0].data = [newCount, estCount, otherCount];
+      chart.update();
+    };
+
+    const updateProviderChart = (providerVisits) => {
+      const entries = Array.from(providerVisits.entries())
+        .map(([provider, set]) => [provider, set.size])
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
+
+      const chart = state.charts.provider;
+      chart.data.labels = entries.map(([label]) => label || 'Unknown');
+      chart.data.datasets[0].data = entries.map(([, value]) => value);
+      chart.update();
+    };
+
+    const updateAgingChart = (bucketTotals) => {
+      const chart = state.charts.aging;
+      chart.data.datasets[0].data = bucketTotals;
+      chart.update();
+    };
+
+    const updateBalanceChart = (insuranceBalance, patientBalance) => {
+      const chart = state.charts.balance;
+      chart.data.datasets[0].data = [insuranceBalance, patientBalance];
+      chart.update();
+    };
+
+    const updateSplitCharts = (splits) => {
+      state.charts.chargeSplit.data.datasets[0].data = [
+        splits.chargeInsurance,
+        splits.chargePatient
+      ];
+      state.charts.chargeSplit.update();
+
+      state.charts.paymentSplit.data.datasets[0].data = [
+        splits.paymentInsurance,
+        splits.paymentPatient
+      ];
+      state.charts.paymentSplit.update();
+    };
+
+    const updateCptCharts = (summaries) => {
+      const topCharges = Array.from(summaries.charges.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      const topPayments = Array.from(summaries.payments.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      const topDiagnosis = Array.from(summaries.diagnoses.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+      state.charts.cptCharges.data.labels = topCharges.map(([code]) => code);
+      state.charts.cptCharges.data.datasets[0].data = topCharges.map(([, value]) => value);
+      state.charts.cptCharges.update();
+
+      state.charts.cptPayments.data.labels = topPayments.map(([code]) => code);
+      state.charts.cptPayments.data.datasets[0].data = topPayments.map(([, value]) => value);
+      state.charts.cptPayments.update();
+
+      state.charts.diagnosis.data.labels = topDiagnosis.map(([code]) => code);
+      state.charts.diagnosis.data.datasets[0].data = topDiagnosis.map(([, value]) => value);
+      state.charts.diagnosis.update();
+    };
+
+    const updateDailyVisitsChart = (visitsByDay) => {
+      const rows = Array.from(visitsByDay.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, set]) => ({
+          date: (() => {
+            const [y, m, d] = date.split('-').map(Number);
+            return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          })(),
+          count: set.size
+        }));
+
+      state.charts.dailyVisits.data.labels = rows.map(row => row.date);
+      state.charts.dailyVisits.data.datasets[0].data = rows.map(row => row.count);
+      state.charts.dailyVisits.update();
+    };
+
+    const updateInsuranceTable = (insuranceTotals) => {
+      const table = document.getElementById('insuranceTable');
+      const headers = ['Insurance', ...bucketLabels, 'Total'];
+
+      const allRows = Array.from(insuranceTotals.entries())
+        .map(([name, entry]) => ({
+          name,
+          buckets: entry.buckets,
+          total: entry.total
+        }))
+        .sort((a, b) => b.total - a.total);
+
+      const rows = allRows.slice(0, 10);
+      const totalBuckets = new Array(bucketLabels.length).fill(0);
+      let totalAll = 0;
+      allRows.forEach(row => {
+        row.buckets.forEach((value, i) => totalBuckets[i] += value);
+        totalAll += row.total;
+      });
+
+      const topBuckets = new Array(bucketLabels.length).fill(0);
+      let topTotal = 0;
+      rows.forEach(row => {
+        row.buckets.forEach((value, i) => topBuckets[i] += value);
+        topTotal += row.total;
+      });
+
+      const otherBuckets = totalBuckets.map((value, i) => value - topBuckets[i]);
+      const otherTotal = totalAll - topTotal;
+
+      table.innerHTML = `
+        <thead>
+          <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+        </thead>
+        <tbody>
+          <tr class="row-total">
+            <td>Total Outstanding</td>
+            ${totalBuckets.map(value => `<td>${currency.format(value)}</td>`).join('')}
+            <td>${currency.format(totalAll)}</td>
+          </tr>
+          ${rows.map(row => `
+            <tr>
+              <td>${row.name}</td>
+              ${row.buckets.map(value => `<td>${currency.format(value)}</td>`).join('')}
+              <td>${currency.format(row.total)}</td>
+            </tr>
+          `).join('')}
+          <tr class="row-others">
+            <td>Others</td>
+            ${otherBuckets.map(value => `<td>${currency.format(value)}</td>`).join('')}
+            <td>${currency.format(otherTotal)}</td>
+          </tr>
+        </tbody>
+      `;
+    };
+
+    const updateMonthlyTable = (monthly) => {
+      const table = document.getElementById('monthlyTable');
+      const keys = Array.from(monthly.keys()).sort().slice(-12);
+
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Visits</th>
+            <th>Charges</th>
+            <th>Payments</th>
+            <th>Adjustments</th>
+            <th>Collection %</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${keys.map(key => {
+            const item = monthly.get(key);
+            const netCharges = Math.abs(item.charges) - Math.abs(item.adjustments);
+            const rate = netCharges > 0 ? (Math.abs(item.payments) / netCharges) : 0;
+            return `
+              <tr>
+                <td>${formatMonth(key)}</td>
+                <td>${number.format(item.visitKeys.size)}</td>
+                <td>${currency.format(item.charges)}</td>
+                <td>${currency.format(Math.abs(item.payments))}</td>
+                <td>${currency.format(item.adjustments)}</td>
+                <td>${(rate * 100).toFixed(2)}%</td>
+              </tr>
+            `;
+          }).join('')}
+          <tr class="row-total">
+            ${(() => {
+              const summary = keys.reduce((acc, key) => {
+                const item = monthly.get(key);
+                acc.visits += item.visitKeys.size;
+                acc.charges += item.charges;
+                acc.payments += Math.abs(item.payments);
+                acc.adjustments += item.adjustments;
+                return acc;
+              }, { visits: 0, charges: 0, payments: 0, adjustments: 0 });
+              const netCharges = Math.abs(summary.charges) - Math.abs(summary.adjustments);
+              const rate = netCharges > 0 ? (summary.payments / netCharges) : 0;
+              return `
+                <td>Total</td>
+                <td>${number.format(summary.visits)}</td>
+                <td>${currency.format(summary.charges)}</td>
+                <td>${currency.format(summary.payments)}</td>
+                <td>${currency.format(summary.adjustments)}</td>
+                <td>${(rate * 100).toFixed(2)}%</td>
+              `;
+            })()}
+          </tr>
+        </tbody>
+      `;
+    };
+
+    init();
+  </script>
+</body>
+</html>
